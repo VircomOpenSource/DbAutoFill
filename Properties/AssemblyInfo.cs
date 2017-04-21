@@ -8,7 +8,7 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyTitle("DatabaseAutoFill")]
 [assembly: AssemblyDescription("")]
 [assembly: AssemblyConfiguration("")]
-[assembly: AssemblyCompany("Microsoft")]
+[assembly: AssemblyCompany("Vircom")]
 [assembly: AssemblyProduct("DatabaseAutoFill")]
 [assembly: AssemblyCopyright("Copyright © Vircom 2017")]
 [assembly: AssemblyTrademark("")]
