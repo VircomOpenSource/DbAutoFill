@@ -1,4 +1,5 @@
 ﻿using DatabaseAutoFill;
+using DatabaseAutoFill.Types;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 using System.Data;
@@ -115,6 +116,28 @@ namespace test_DatabaseAutoFill
             _command.Dispose();
             _dvco = null;
             _dataReader.Dispose();
+        }
+
+        [TestMethod]
+        [TestCategory("DatabaseAutoFill")]
+        public void Basic_ResultSetAlwaysSet_Default_Test()
+        {
+            DbResponse<bool> response = new DbResponse<bool>();
+            Assert.IsNotNull(response.ResultSet);
+            Assert.IsFalse(response.HasResult);
+            Assert.IsFalse(response.HasError);
+        }
+
+        [TestMethod]
+        [TestCategory("DatabaseAutoFill")]
+        public void Basic_ResultSetAlwaysSet_Error_Test()
+        {
+            DbResponse<bool> response = new DbResponse<bool>("Bad error", new Exception("Error"));
+            Assert.IsTrue(response.HasError);
+            Assert.IsNotNull(response.Exception);
+            Assert.IsFalse(string.IsNullOrWhiteSpace(response.ErrorMessage));
+            Assert.IsNotNull(response.ResultSet);
+            Assert.IsFalse(response.HasResult);
         }
 
         [TestMethod]
