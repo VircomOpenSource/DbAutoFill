@@ -39,6 +39,7 @@ namespace DatabaseAutoFill.Types
         }
 
         public DbResponse(string errorMessage, Exception ex)
+            : this()
         {
             if (ex == null)
                 throw new ArgumentNullException("ex");
