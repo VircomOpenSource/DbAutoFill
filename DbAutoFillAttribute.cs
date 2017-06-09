@@ -22,6 +22,11 @@ namespace DatabaseAutoFill
         public string ParameterPrefix { get; set; }
 
         /// <summary>
+        /// When in FillMode
+        /// </summary>
+        public string ParameterSuffix { get; set; }
+
+        /// <summary>
         /// Allow specifying the DbType for the current property or field (e.g. DateTime2 instead of DateTime).
         /// </summary>
         public DbType DbType { get; set; }

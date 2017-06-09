@@ -46,6 +46,8 @@ namespace test_DatabaseAutoFill
         private static readonly DateTime ADVANCED_DATAREADER_DBTYPEDEFAULT_VALUE = DateTime.Parse("2017/05/05 5:00 AM");
         private static readonly DateTime ADVANCED_DATAREADER_DBTYPE_VALUE = DateTime.Parse("2016/12/12 6:00 PM");
         private const string ADVANCED_DATAREADER_PREFIX_VALUE = "Hey, Sexy Lib!";
+
+        private const string ADVANCED_PARAMETER_SUFFIX_PARAM_NAME = "@p_WithSuffix_IN";
         #endregion
 
         #region --OBJECTS--
@@ -93,6 +95,15 @@ namespace test_DatabaseAutoFill
 
             [DbAutoFill(DbType = DbType.DateTime)]
             public DateTime DbTypeParameterDefault { get; set; }
+
+            [DbAutoFill(ParameterSuffix = "_IN", FillBehavior = FillBehavior.ToDB)]
+            public int WithSuffix { get; set; }
+        }
+
+        [DbAutoFill(ParameterPrefix = "@p_", ParameterSuffix = "_IN")]
+        public class ClassWithSuffix
+        {
+            public int WithSuffix { get; set; }
         }
 
         #endregion
@@ -156,6 +167,24 @@ namespace test_DatabaseAutoFill
         }
 
         [TestMethod]
+        public void Advanced_SetParametersFromObject_ParametersSuffix_OnProperty_Test()
+        {
+            AdvancedAutoFillClass aafc = new AdvancedAutoFillClass();
+            DbAutoFillHelper.AddParametersFromObjectMembers(_command, aafc);
+
+            Assert.IsTrue(_command.Parameters.Contains(ADVANCED_PARAMETER_SUFFIX_PARAM_NAME));
+        }
+
+        [TestMethod]
+        public void Advanced_SetParametersFromObject_ParametersSuffix_OnClass_Test()
+        {
+            ClassWithSuffix cws = new ClassWithSuffix();
+            DbAutoFillHelper.AddParametersFromObjectMembers(_command, cws);
+
+            Assert.IsTrue(_command.Parameters.Contains(ADVANCED_PARAMETER_SUFFIX_PARAM_NAME));
+        }
+
+        [TestMethod]
         [TestCategory("DatabaseAutoFill")]
         public void Advanced_GetParametersFromDataReader_GoodValues_Test()
         {
@@ -200,7 +229,7 @@ namespace test_DatabaseAutoFill
         public void FillObjectFromDataReader_GoodValues_Test()
         {
             _dvco = new DefaultValuesClassObject();
-            
+
             DbAutoFillHelper.FillObjectFromDataReader(_dvco, _dataReader);
 
             Assert.AreEqual(_dvco.Parameter1, DATAREADER_PARAMETER_1_VALUE);
@@ -208,7 +237,7 @@ namespace test_DatabaseAutoFill
             Assert.AreEqual(_dvco.FromDBParameter, DATAREADER_FROMDBPARAMETER_VALUE);
             Assert.AreNotEqual(_dvco.NoneParameter, DATAREADER_NONEPARAMETER_VALUE);
             Assert.AreNotEqual(_dvco.ToDBParameter, DATAREADER_ToDBPARAMETER_VALUE);
-            
+
         }
 
         private DataTable CreateNewDataTable()
@@ -238,7 +267,7 @@ namespace test_DatabaseAutoFill
         private IDataReader CreateAdvancedDataReader()
         {
             DataTable dt = CreateAdvancedDataTable();
-            dt.Rows.Add(ADVANCED_DATAREADER_ALIASED_VALUE, 
+            dt.Rows.Add(ADVANCED_DATAREADER_ALIASED_VALUE,
                 ADVANCED_DATAREADER_DBTYPEDEFAULT_VALUE,
                 ADVANCED_DATAREADER_DBTYPE_VALUE,
                 ADVANCED_DATAREADER_PREFIX_VALUE);
