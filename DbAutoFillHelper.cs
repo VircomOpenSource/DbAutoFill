@@ -94,9 +94,10 @@ namespace DatabaseAutoFill
             FieldInfo[] modelFieldInfos = modelType.GetFields();
 
             string modelParameterPrefix = modelAttribute.ParameterPrefix ?? "";
+            string modelParameterSuffix = modelAttribute.ParameterSuffix ?? "";
 
-            AddParametersFromMemberInfos(command, obj, modelPropertyInfos, modelAttribute, modelParameterPrefix);
-            AddParametersFromMemberInfos(command, obj, modelFieldInfos, modelAttribute, modelParameterPrefix);
+            AddParametersFromMemberInfos(command, obj, modelPropertyInfos, modelAttribute, modelParameterPrefix, modelParameterSuffix);
+            AddParametersFromMemberInfos(command, obj, modelFieldInfos, modelAttribute, modelParameterPrefix, modelParameterSuffix);
         }
 
         /// <summary>
@@ -142,7 +143,7 @@ namespace DatabaseAutoFill
             SetMembersValuesFromDataReader(dataReader, obj, modelFields, lstDbFields, modelAttribute);
         }
         
-        private static void AddParametersFromMemberInfos<T>(IDbCommand command, T obj, MemberInfo[] memberInfos, DbAutoFillAttribute modelAttribute, string modelParameterPrefix)
+        private static void AddParametersFromMemberInfos<T>(IDbCommand command, T obj, MemberInfo[] memberInfos, DbAutoFillAttribute modelAttribute, string modelParameterPrefix, string modelParameterSuffix)
         {
             foreach (var mi in memberInfos)
             {
@@ -152,7 +153,7 @@ namespace DatabaseAutoFill
                 if (memberAttribute == null && modelAttribute == null)
                     continue;
 
-                AddParameterFromAttribute(command, obj, modelParameterPrefix, mi.Name, memberAttribute);
+                AddParameterFromAttribute(command, obj, modelParameterPrefix, modelParameterSuffix, mi.Name, memberAttribute);
             }
         }
 
@@ -258,7 +259,7 @@ namespace DatabaseAutoFill
         /// 
         /// </summary>
         /// <returns>false if cannot get filled</returns>
-        private static bool ParseAttributeInfosForParameter(DbAutoFillAttribute attribute, string modelParameterPrefix, string fieldName, ref string parameterName, ref DbType? sqlType)
+        private static bool ParseAttributeInfosForParameter(DbAutoFillAttribute attribute, string modelParameterPrefix, string modelParameterSuffix, string fieldName, ref string parameterName, ref DbType? sqlType)
         {
             if (attribute == null)
                 return true;
@@ -267,18 +268,22 @@ namespace DatabaseAutoFill
                 return false;
 
             string propertyPrefix = modelParameterPrefix;
+            string propertySuffix = modelParameterSuffix;
 
             if (!string.IsNullOrWhiteSpace(attribute.ParameterPrefix))
                 propertyPrefix = attribute.ParameterPrefix;
+
+            if (!string.IsNullOrWhiteSpace(attribute.ParameterSuffix))
+                propertySuffix = attribute.ParameterSuffix;
 
             string specifiedName = attribute.Alias;
 
             sqlType = attribute.DbType;
 
             if (!string.IsNullOrWhiteSpace(specifiedName))
-                parameterName = propertyPrefix + specifiedName;
+                parameterName = propertyPrefix + specifiedName + propertySuffix;
             else
-                parameterName = propertyPrefix + fieldName;
+                parameterName = propertyPrefix + fieldName + propertySuffix;
 
             return true;
         }
@@ -286,12 +291,12 @@ namespace DatabaseAutoFill
         /// <summary>
         /// 
         /// </summary>
-        private static void AddParameterFromAttribute<T>(IDbCommand cmd, T model, string modelParameterPrefix, string propertyName, DbAutoFillAttribute propertyAttribute)
+        private static void AddParameterFromAttribute<T>(IDbCommand cmd, T model, string modelParameterPrefix, string modelParameterSuffix, string propertyName, DbAutoFillAttribute propertyAttribute)
         {
-            string parameterName = modelParameterPrefix + propertyName;
+            string parameterName = modelParameterPrefix + propertyName + modelParameterSuffix;
             DbType? sqlType = null;
 
-            if (!ParseAttributeInfosForParameter(propertyAttribute, modelParameterPrefix, propertyName, ref parameterName, ref sqlType))
+            if (!ParseAttributeInfosForParameter(propertyAttribute, modelParameterPrefix, modelParameterSuffix, propertyName, ref parameterName, ref sqlType))
                 return;
 
             object parameterValue = model.GetType()
