@@ -4,6 +4,7 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 using System.Data;
 using System.Data.SqlClient;
+using test_DatabaseAutoFill.Objects;
 
 namespace test_DatabaseAutoFill
 {
@@ -32,6 +33,9 @@ namespace test_DatabaseAutoFill
         private const int DATAREADER_ToDBPARAMETER_VALUE = 11200;
         private const int DATAREADER_FROMDBPARAMETER_VALUE = 5645300;
 
+        private const string BASIC_PARAMETER_SECOND_OBJECT_NORMAL_FIELD = "NormalField";
+        private const int BASIC_PARAMETER_SECOND_OBJECT_NORMAL_FIELD_VALUE = 34;
+
         private const string ADVANCED_PARAMETER_PREFIX_OVERRIDE_PARAM_NAME = "@param_ParameterPrefixOverride";
         private const string ADVANCED_PARAMETER_PREFIX_OVERRIDE_NAME = "ParameterPrefixOverride";
         private const string ADVANCED_PARAMETER_ALLOWED_MISSING_PARAM_NAME = "@p_ParameterAllowedMissing";
@@ -51,6 +55,12 @@ namespace test_DatabaseAutoFill
         #endregion
 
         #region --OBJECTS--
+        [DbAutoFill]
+        public class SecondObject
+        {
+            public int NormalField = 34;
+        }
+
         [DbAutoFill]
         public class DefaultValuesClassObject
         {
@@ -173,6 +183,16 @@ namespace test_DatabaseAutoFill
             DbAutoFillHelper.AddParametersFromObjectMembers(_command, aafc);
 
             Assert.IsTrue(_command.Parameters.Contains(ADVANCED_PARAMETER_SUFFIX_PARAM_NAME));
+        }
+
+        [TestMethod]
+        public void Basic_SetParametersFromObject_PlainField_Test()
+        {
+            SecondObject so = new SecondObject();
+            DbAutoFillHelper.AddParametersFromObjectMembers(_command, so);
+
+            Assert.IsTrue(_command.Parameters.Contains(BASIC_PARAMETER_SECOND_OBJECT_NORMAL_FIELD));
+            Assert.IsTrue(_command.Parameters[BASIC_PARAMETER_SECOND_OBJECT_NORMAL_FIELD].Value.Equals(BASIC_PARAMETER_SECOND_OBJECT_NORMAL_FIELD_VALUE));
         }
 
         [TestMethod]

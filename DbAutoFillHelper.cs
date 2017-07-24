@@ -291,17 +291,28 @@ namespace DatabaseAutoFill
         /// <summary>
         /// 
         /// </summary>
-        private static void AddParameterFromAttribute<T>(IDbCommand cmd, T model, string modelParameterPrefix, string modelParameterSuffix, string propertyName, DbAutoFillAttribute propertyAttribute)
+        private static void AddParameterFromAttribute<T>(IDbCommand cmd, T model, string modelParameterPrefix, string modelParameterSuffix, string memberName, DbAutoFillAttribute propertyAttribute)
         {
-            string parameterName = modelParameterPrefix + propertyName + modelParameterSuffix;
+            string parameterName = modelParameterPrefix + memberName + modelParameterSuffix;
             DbType? sqlType = null;
 
-            if (!ParseAttributeInfosForParameter(propertyAttribute, modelParameterPrefix, modelParameterSuffix, propertyName, ref parameterName, ref sqlType))
+            if (!ParseAttributeInfosForParameter(propertyAttribute, modelParameterPrefix, modelParameterSuffix, memberName, ref parameterName, ref sqlType))
                 return;
 
-            object parameterValue = model.GetType()
-                .GetProperty(propertyName)
-                .GetValue(model, null);
+            object parameterValue = null;
+            Type modelType = model.GetType();
+            {
+                PropertyInfo pi = modelType.GetProperty(memberName);
+                if (pi == null)
+                {
+                    FieldInfo fi = modelType.GetField(memberName);
+                    parameterValue = fi.GetValue(model);
+                }
+                else
+                {
+                    parameterValue = pi.GetValue(model, null);
+                }
+            }
 
             AddParameterWithValue(cmd, parameterName, parameterValue, sqlType);
         }
