@@ -59,7 +59,7 @@ namespace DatabaseAutoFill
         public DbResponse<TResultType> ExecuteDbProcedureNamedAsCallerName<TResultType>(object inputObject, [CallerMemberName] string callerName = "")
             where TResultType : new()
         {
-            return ExecuteDbProcedureNamedAsCallerName<TResultType>(new object[] { inputObject }, callerName);
+            return InternalExecuteDbProcedureNamedAsCallerName<TResultType>(new object[] { inputObject }, callerName);
         }
 
         /// <summary>
@@ -75,7 +75,7 @@ namespace DatabaseAutoFill
         public DbResponse<TResultType> ExecuteDbProcedureNamedAsCallerName<TResultType>(IDbAnonymousValue[] inputObjects, [CallerMemberName] string callerName = "")
            where TResultType : new()
         {
-            return ExecuteDbProcedureNamedAsCallerName<TResultType>(inputObjects, callerName);
+            return InternalExecuteDbProcedureNamedAsCallerName<TResultType>(inputObjects, callerName);
         }
 
         /// <summary>
@@ -93,7 +93,7 @@ namespace DatabaseAutoFill
             return ExecuteDbProcedureNamedAsCallerName<TResultType>(DBNull.Value, callerName);
         }
 
-        private DbResponse<TResultType> ExecuteDbProcedureNamedAsCallerName<TResultType>(object[] inputObjects, [CallerMemberName] string callerName = "")
+        private DbResponse<TResultType> InternalExecuteDbProcedureNamedAsCallerName<TResultType>(object[] inputObjects, [CallerMemberName] string callerName = "")
             where TResultType : new()
         {
             if (inputObjects == null || inputObjects.Length == 0)
