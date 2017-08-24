@@ -19,11 +19,12 @@ namespace DatabaseAutoFill
 
         }
 
-        /// <exception cref="ArgumentException"></exception>
+        /// <exception cref="ArgumentException">Thrown when connection string is empty or the connection failed./exception>
+        /// <exception cref="FormatException">Thrown when the base command string is empty.</exception>
         public DbCommandHelper(string connectionString, string schemaName)
         {
             if (string.IsNullOrWhiteSpace(connectionString))
-                throw new ArgumentException("Connection String must not be empty.", "connectionString");
+                throw new ArgumentException("Connection string must not be empty.", "connectionString");
 
             _connString = connectionString;
             _baseCmd = CreateBaseCommandString(connectionString, schemaName);
@@ -51,15 +52,51 @@ namespace DatabaseAutoFill
         /// 
         /// This function is guaranteed to not throw, and to always wrap errors in the DbResponse object.
         /// </summary>
-        /// <typeparam name="TInputType"></typeparam>
         /// <typeparam name="TResultType">Returning object type. That object will be filled with returning data from database.</typeparam>
         /// <param name="inputObject">Object type that contains data to be sent to the stored procedure.</param>
         /// <param name="callerName">If not filled, will be replaced by the calling function's name.</param>
-        /// <returns>DatabaseResponse containing a list of TResultType objects or the error message.</returns>
-        public DbResponse<TResultType> ExecuteDbProcedureNamedAsCallerName<TInputType, TResultType>(TInputType inputObject, [CallerMemberName] string callerName = "")
+        /// <returns>DBResponse containing a list of TResultType objects or the error message.</returns>
+        public DbResponse<TResultType> ExecuteDbProcedureNamedAsCallerName<TResultType>(object inputObject, [CallerMemberName] string callerName = "")
             where TResultType : new()
         {
-            if (inputObject == null)
+            return InternalExecuteDbProcedureNamedAsCallerName<TResultType>(new object[] { inputObject }, callerName);
+        }
+
+        /// <summary>
+        /// Takes the caller's name and tries to find a stored procedure named identically on the database and execute it
+        /// from the InputType content as parameter and returns a TResultType object filled with results.
+        /// 
+        /// This function is guaranteed to not throw, and to always wrap errors in the DbResponse object.
+        /// </summary>
+        /// <typeparam name="TResultType">Returning object type. That object will be filled with returning data from database.</typeparam>
+        /// <param name="inputObjects">Object type that contains data to be sent to the stored procedure.</param>
+        /// <param name="callerName">If not filled, will be replaced by the calling function's name.</param>
+        /// <returns>DBResponse containing a list of TResultType objects or the error message.</returns>
+        public DbResponse<TResultType> ExecuteDbProcedureNamedAsCallerName<TResultType>(IDbAnonymousValue[] inputObjects, [CallerMemberName] string callerName = "")
+           where TResultType : new()
+        {
+            return InternalExecuteDbProcedureNamedAsCallerName<TResultType>(inputObjects, callerName);
+        }
+
+        /// <summary>
+        /// Takes the caller's name and tries to find a stored procedure named identically on the database and execute it without parameters.
+        /// 
+        /// This function is guaranteed to not throw, and to always wrap errors in the DbResponse object.
+        /// </summary>
+        /// <typeparam name="TResultType">Returning object type. That object will be filled with returning data from database.</typeparam>
+        /// <param name="inputObject">Object type that contains data to be sent to the stored procedure.</param>
+        /// <param name="callerName">If not filled, will be replaced by the caller function's name.</param>
+        /// <returns>DatabaseResponse containing a list of TResultType objects or the error message.</returns>
+        public DbResponse<TResultType> ExecuteDbProcedureNamedAsCallerName<TResultType>([CallerMemberName] string callerName = "")
+            where TResultType : new()
+        {
+            return ExecuteDbProcedureNamedAsCallerName<TResultType>(DBNull.Value, callerName);
+        }
+
+        private DbResponse<TResultType> InternalExecuteDbProcedureNamedAsCallerName<TResultType>(object[] inputObjects, [CallerMemberName] string callerName = "")
+            where TResultType : new()
+        {
+            if (inputObjects == null || inputObjects.Length == 0)
                 return new DbResponse<TResultType>(string.Format("Argument inputObject must not be null. Caller: {0}", callerName), new ArgumentNullException("inputObject"));
 
             string procedureName = string.Format(_baseCmd, callerName);
@@ -77,30 +114,14 @@ namespace DatabaseAutoFill
                     return new DbResponse<TResultType>(string.Format("Couldn't open connection to database. Caller: {0}", callerName), ex);
                 }
 
-                using (var cmd = conn.CreateCommand())
+                using (IDbCommand command = conn.CreateCommand())
                 {
-                    cmd.CommandText = procedureName;
-                    cmd.CommandType = CommandType.StoredProcedure;
+                    command.CommandText = procedureName;
+                    command.CommandType = CommandType.StoredProcedure;
                     try
                     {
-                        if (inputObject != null && !(inputObject is DBNull))
-                        {
-                            if (inputObject is IDbAnonymousValue)
-                            {
-                                IDbAnonymousValue param = inputObject as IDbAnonymousValue;
-                                DbAutoFillHelper.AddParameterWithValue(cmd, param.Alias, param.GetValue(), null);
-                            }
-                            else
-                                DbAutoFillHelper.AddParametersFromObjectMembers<TInputType>(cmd, inputObject);
-                        }
-                        IDataReader dr = cmd.ExecuteReader();
-
-                        while (dr.Read())
-                        {
-                            TResultType obj = new TResultType();
-                            DbAutoFillHelper.FillObjectFromDataReader<TResultType>(obj, dr);
-                            response.Add(obj);
-                        }
+                        AddParametersWithValueToCommand(command, inputObjects);
+                        AddObjectsToResponseFromCommandResult(command, response);
                     }
                     catch (Exception ex)
                     {
@@ -112,19 +133,36 @@ namespace DatabaseAutoFill
             return response;
         }
 
-        /// <summary>
-        /// Takes the caller's name and tries to find a stored procedure named identically on the database and execute it without parameters.
-        /// 
-        /// This function is guaranteed to not throw, and to always wrap errors in the DbResponse object.
-        /// </summary>
-        /// <typeparam name="TResultType">Returning object type. That object will be filled with returning data from database.</typeparam>
-        /// <param name="inputObject">Object type that contains data to be sent to the stored procedure.</param>
-        /// <param name="callerName">If not filled, will be replaced by the caller function's name.</param>
-        /// <returns>DatabaseResponse containing a list of TResultType objects or the error message.</returns>
-        public DbResponse<TResultType> ExecuteDbProcedureNamedAsCallerName<TResultType>([CallerMemberName] string callerName = "")
-            where TResultType : new()
+        private void AddParametersWithValueToCommand(IDbCommand command, params object[] parameters)
         {
-            return ExecuteDbProcedureNamedAsCallerName<DBNull, TResultType>(DBNull.Value, callerName);
+            if (parameters == null || parameters.Length == 0)
+                return;
+
+            foreach (object parameter in parameters)
+            {
+                if (parameter != null && false == (parameter is DBNull))
+                {
+                    IDbAnonymousValue anonymousParam = parameter as IDbAnonymousValue;
+
+                    if (anonymousParam != null)
+                        DbAutoFillHelper.AddParameterWithValue(command, anonymousParam.Alias, anonymousParam.GetValue(), null);
+                    else
+                        DbAutoFillHelper.AddParametersFromObjectMembers(command, parameter);
+                }
+            }
+        }
+
+        private void AddObjectsToResponseFromCommandResult<TObjects>(IDbCommand command, DbResponse<TObjects> response)
+            where TObjects : new()
+        {
+            IDataReader reader = command.ExecuteReader();
+
+            while (reader.Read())
+            {
+                TObjects obj = new TObjects();
+                DbAutoFillHelper.FillObjectFromDataReader(obj, reader);
+                response.Add(obj);
+            }
         }
     }
 }
